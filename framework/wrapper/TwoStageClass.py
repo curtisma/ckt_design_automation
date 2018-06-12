@@ -97,6 +97,77 @@ class TwoStageClass(NgSpiceWrapper):
                 return xstart
             return xstop
 
+class EvaluationCore(object):
+
+    def __init__(self, cir_yaml):
+        import yaml
+        with open(cir_yaml, 'r') as f:
+            yaml_data = yaml.load(f)
+
+        # specs
+        specs = yaml_data['target_specs']
+        self.ugbw_min     = specs['ugbw_min']
+        self.gain_min   = specs['gain_min']
+        self.phm_min   = specs['phm_min']
+        self.bias_max = 10e-3
+
+        num_process = yaml_data['num_process']
+        dsn_netlist = yaml_data['dsn_netlist']
+        self.env = TwoStageClass(num_process=num_process, design_netlist=dsn_netlist)
+
+        params = yaml_data['params']
+        self.mp1_vec = np.arange(params['mp1'][0], params['mp1'][1], params['mp1'][2])
+        self.mn1_vec = np.arange(params['mn1'][0], params['mn1'][1], params['mn1'][2])
+        self.mn3_vec = np.arange(params['mn3'][0], params['mn3'][1], params['mn3'][2])
+        self.mn4_vec = np.arange(params['mn4'][0], params['mn4'][1], params['mn4'][2])
+        self.mp3_vec = np.arange(params['mp3'][0], params['mp3'][1], params['mp3'][2])
+        self.mn5_vec = np.arange(params['mn5'][0], params['mn5'][1], params['mn5'][2])
+        self.cc_vec = np.arange(params['cc'][0], params['cc'][1], params['cc'][2])
+
+    def cost_fun(self, mp1, mn1, mp3, mn3, mn4, mn5 , cc,  verbose=False):
+        """
+
+        :param res:
+        :param mul:
+        :param verbose: if True will print the specification performance of the best individual and file name of
+        the netlist
+        :return:
+        """
+        if verbose:
+            print("state_before_rounding:{}".format([mp1, mn1, mn3, mp3, mn5, mn4, cc]))
+
+        state = [{'mp1': int(mp1),
+                  'mn1': int(mn1),
+                  'mp3': int(mp3),
+                  'mn3': int(mn3),
+                  'mn4': int(mn4),
+                  'mn5': int(mn5),
+                  'cc':  cc
+                  }]
+        results = self.env.run(state, verbose=verbose)
+        ugbw_cur = results[0][1]['ugbw']
+        gain_cur = results[0][1]['gain']
+        phm_cur = results[0][1]['phm']
+        ibias_cur = results[0][1]['Ibias']
+
+        if verbose:
+            print('gain = %f vs. gain_min = %f' %(gain_cur, self.gain_min))
+            print('ugbw = %f vs. ugbw_min = %f' %(ugbw_cur, self.ugbw_min))
+            print('phm = %f vs. phm_min = %f' %(phm_cur, self.phm_min))
+            print('Ibias = %f' %(ibias_cur))
+
+        cost = 0
+        if ugbw_cur < self.ugbw_min:
+            cost += abs(ugbw_cur/self.ugbw_min - 1.0)
+        if gain_cur < self.gain_min:
+            cost += abs(gain_cur/self.gain_min - 1.0)
+        if phm_cur < self.phm_min:
+            cost += abs(phm_cur/self.phm_min - 1.0)
+        cost += abs(ibias_cur/self.bias_max)/10
+
+        return cost
+
+
 if __name__ == '__main__':
 
     num_process = 1
