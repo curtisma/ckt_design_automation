@@ -9,6 +9,8 @@ import numpy as np
 import os
 from scipy import interpolate
 
+import sys
+sys.path.append('./')
 from framework.wrapper import ngspice_wrapper as sim
 
 ######################################################################
@@ -22,58 +24,8 @@ def load_array(fname):
     return arr
 ######################################################################
 ## function and classes related to this specific problem and dealing with the evaluation core
-class EvaluationCore(object):
 
-    def __init__(self, cir_yaml):
-        import yaml
-        with open(cir_yaml, 'r') as f:
-            yaml_data = yaml.load(f)
-
-        # specs
-        specs = yaml_data['target_specs']
-        self.bw_min     = specs['bw_min']
-        self.gain_min   = specs['gain_min']
-        self.bias_max   = specs['ibias_max']
-
-        num_process = yaml_data['num_process']
-        dsn_netlist = yaml_data['dsn_netlist']
-        self.env = sim.CsAmpClass(num_process=num_process, design_netlist=dsn_netlist)
-
-        params = yaml_data['params']
-        self.res_vec = np.arange(params['rload'][0], params['rload'][1], params['rload'][2])
-        self.mul_vec = np.arange(params['mul'][0], params['mul'][1], params['mul'][2])
-
-    def cost_fun(self, res, mul, verbose=False):
-        """
-
-        :param res:
-        :param mul:
-        :param verbose: if True will print the specification performance of the best individual
-        :return:
-        """
-
-        state = [{'rload': res, 'mul': int(mul)}]
-        results = self.env.run(state, verbose=False)
-        bw_cur = results[0][1]['bw']
-        gain_cur = results[0][1]['gain']
-        ibias_cur = results[0][1]['Ibias']
-
-        if verbose:
-            print('bw = %f vs. bw_min = %f' %(bw_cur, self.bw_min))
-            print('gain = %f vs. gain_min = %f' %(gain_cur, self.gain_min))
-            print('Ibias = %f vs. Ibias_max = %f' %(ibias_cur, self.bias_max))
-
-        cost = 0
-        if bw_cur < self.bw_min:
-            cost += abs(bw_cur/self.bw_min - 1.0)
-        if gain_cur < self.gain_min:
-            cost += abs(gain_cur/self.gain_min - 1.0)
-        cost += abs(ibias_cur/self.bias_max)/10
-
-        return cost
-
-
-eval_core = EvaluationCore("./genome/yaml_files/cs_amp.yaml")
+eval_core = sim.CsAmpEvaluationCore("./framework/yaml_files/cs_amp.yaml")
 
 def init_inividual():
     # TODO
