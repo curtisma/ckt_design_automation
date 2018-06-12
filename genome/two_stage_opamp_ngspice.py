@@ -123,7 +123,7 @@ def main():
     # pprint.pprint(history.genealogy_history)
     # pprint.pprint(history.genealogy_tree)
     import pickle
-    with open("./genome/log/logbook.pickle", 'wb') as f:
+    with open("./genome/log/two_stage_logbook.pickle", 'wb') as f:
         pickle.dump(logbook, f)
 
 
