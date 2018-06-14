@@ -92,7 +92,7 @@ pop_size = 256
 offspring_size = 256
 cxpb = 0.6
 mutpb = 0.05
-ngen = 30
+ngen = 20
 
 def main():
 

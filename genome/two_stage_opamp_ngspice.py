@@ -23,7 +23,7 @@ def load_array(fname):
 ######################################################################
 ## function and classes related to this specific problem and dealing with the evaluation core
 
-eval_core = sim.EvaluationCore("./genome/yaml_files/two_stage_opamp.yaml")
+eval_core = sim.EvaluationCore("./framework/yaml_files/two_stage_opamp.yaml")
 
 def init_inividual():
     # TODO

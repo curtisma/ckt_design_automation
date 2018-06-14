@@ -66,7 +66,7 @@ class EvaluationCore(object):
         return cost
 
 
-eval_core = EvaluationCore("./genome/yaml_files/cs_amp.yaml")
+eval_core = EvaluationCore("./framework/yaml_files/cs_amp.yaml")
 
 def init_inividual():
     # TODO
