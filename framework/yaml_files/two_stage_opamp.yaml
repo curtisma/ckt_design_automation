@@ -1,4 +1,4 @@
-dsn_netlist: "./genome/netlist/two_stage_opamp.cir"
+dsn_netlist: "./framework/netlist/two_stage_opamp.cir"
 num_process: 1
 
 target_specs:
