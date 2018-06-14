@@ -1,5 +1,5 @@
 # Analog Circuit Design Automation Repo
-## Genome: A genetic algorithm based circuit optimizer
+## For updates/Documentation check the following link
 
-(Link to the book)[https://www.springer.com/us/book/9783642123450]
+[https://drive.google.com/open?id=1tC1Ogyq3oWedSrpMBbrDObe0reZ2s8ferskZCIUgVi0]
 
