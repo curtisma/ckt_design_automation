@@ -43,14 +43,14 @@ class EvaluationCore(object):
         self.ibias_mesh = load_array("sweeps/ibias.array")
         self.gain_mesh = load_array("sweeps/gain.array")
 
-        self.bw_fun = interpolate.interp2d(self.res_vec, self.mul_vec, self.bw_mesh, kind="linear")
-        self.bias_fun = interpolate.interp2d(self.res_vec, self.mul_vec, self.ibias_mesh, kind="linear")
-        self.gain_fun = interpolate.interp2d(self.res_vec, self.mul_vec, self.gain_mesh, kind="linear")
+        self.bw_fun = interpolate.interp2d(self.res_vec, self.mul_vec, self.bw_mesh, kind="cubic")
+        self.bias_fun = interpolate.interp2d(self.res_vec, self.mul_vec, self.ibias_mesh, kind="cubic")
+        self.gain_fun = interpolate.interp2d(self.res_vec, self.mul_vec, self.gain_mesh, kind="cubic")
 
-    def cost_fun(self, res, mul, verbose=False):
-        bw_cur = self.bw_fun(res, mul)
-        gain_cur = self.gain_fun(res, mul)
-        ibias_cur = self.bias_fun(res, mul)
+    def cost_fun(self, res_idx, mul_idx, verbose=False):
+        bw_cur = self.bw_fun(self.res_vec[res_idx], self.mul_vec[mul_idx])
+        gain_cur = self.gain_fun(self.res_vec[res_idx], self.mul_vec[mul_idx])
+        ibias_cur = self.bias_fun(self.res_vec[res_idx], self.mul_vec[mul_idx])
         if verbose:
             print('bw = %f vs. bw_min = %f' %(bw_cur, self.bw_min))
             print('gain = %f vs. gain_min = %f' %(gain_cur, self.gain_min))
@@ -73,17 +73,17 @@ def init_inividual():
     # returns a vector representing a random individual
     # ind = [random.randint(1, 100) for _ in range(5)]
     # return creator.Individual(ind)
-    res = random.choice(eval_core.res_vec)
-    mul = random.choice(eval_core.mul_vec)
-    return creator.Individual([res, mul])
+    res_idx = random.randint(0, len(eval_core.res_vec)-1)
+    mul_idx = random.randint(0, len(eval_core.mul_vec)-1)
+    return creator.Individual([res_idx, mul_idx])
 
 def evaluate_individual(individual, verbose=False):
     # TODO
     # returns a scalar number representing the cost function of that individual
     # return (sum(individual),)
-    res = individual[0]
-    mul = individual[1]
-    cost_val = eval_core.cost_fun(res, mul, verbose)
+    res_idx = individual[0]
+    mul_idx = individual[1]
+    cost_val = eval_core.cost_fun(int(res_idx), int(mul_idx), verbose)
     return (cost_val,)
 
 ######################################################################
@@ -106,8 +106,8 @@ creator.create("Individual", list, fitness=creator.FitnessMax)
 toolbox = base.Toolbox()
 
 stats_fit = tools.Statistics(key=lambda ind: ind.fitness.values)
-stats_res = tools.Statistics(key=lambda ind: ind[0])
-stats_mul = tools.Statistics(key=lambda ind: ind[1])
+stats_res = tools.Statistics(key=lambda ind: eval_core.res_vec[ind[0]])
+stats_mul = tools.Statistics(key=lambda ind: eval_core.mul_vec[ind[1]])
 mStat = tools.MultiStatistics(fit=stats_fit, res=stats_res, mul=stats_mul)
 mStat.register("avg", np.mean)
 mStat.register("std", np.std)
@@ -120,7 +120,8 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("evaluate", evaluate_individual)
 toolbox.register("select", tools.selBest)
 toolbox.register("mate", tools.cxOnePoint)
-toolbox.register("mutate", tools.mutGaussian, mu=[50, 50], sigma=[10, 10], indpb=0.05)
+toolbox.register("mutate", tools.mutUniformInt, low=[0, 0], up=[len(eval_core.res_vec)-1,
+                                                                len(eval_core.mul_vec)-1], indpb=0.05)
 # toolbox.register("map", futures.map)
 
 # Decorate the variation operators

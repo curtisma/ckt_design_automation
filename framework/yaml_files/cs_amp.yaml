@@ -10,6 +10,6 @@ target_specs:
 
 params:
   vbias: !!python/tuple [0, !!float 1.8, !!float 50.0e-3]
-  rload: !!python/tuple [10.0, !!float 1.0e3, 50]
+  rload: !!python/tuple [10.0, !!float 5.0e3, 20]
   mul:   !!python/tuple [1, 100, 1]
 

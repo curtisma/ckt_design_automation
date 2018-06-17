@@ -209,7 +209,7 @@ class CsAmpEvaluationCore(object):
         self.res_vec = np.arange(params['rload'][0], params['rload'][1], params['rload'][2])
         self.mul_vec = np.arange(params['mul'][0], params['mul'][1], params['mul'][2])
 
-    def cost_fun(self, res, mul, verbose=False):
+    def cost_fun(self, res_idx, mul_idx, verbose=False):
         """
 
         :param res:
@@ -217,8 +217,7 @@ class CsAmpEvaluationCore(object):
         :param verbose: if True will print the specification performance of the best individual
         :return:
         """
-
-        state = [{'rload': res, 'mul': int(mul)}]
+        state = [{'rload': self.res_vec[res_idx], 'mul': self.mul_vec[mul_idx]}]
         results = self.env.run(state, verbose=False)
         bw_cur = results[0][1]['bw']
         gain_cur = results[0][1]['gain']
@@ -238,20 +237,20 @@ class CsAmpEvaluationCore(object):
 
         return cost
 ## helper function for demonstration
-def generate_random_state (len):
-    states = []
-    for _ in range(len):
-        vbias = random.random() * 1.8
-        mul = int(random.random() * (100 - 1) + 1)
-        rload = random.random() * (1000 - 10) + 10
-        #cload = random.random() * (1e-12 - 1e-15) + 1e-15
-        states.append(dict(
-            vbias=vbias,
-            mul=mul,
-            rload=rload,
-            #cload=cload
-        ))
-    return states
+
+def cost_fc(ibias_cur, gain_cur, bw_cur):
+    bw_min = 1e9
+    gain_min = 3
+    bias_max = 1e-3
+
+    cost = 0
+    if bw_cur < bw_min:
+        cost += abs(bw_cur/bw_min - 1.0)
+    if gain_cur < gain_min:
+        cost += abs(gain_cur/gain_min - 1.0)
+    cost += abs(ibias_cur/bias_max)/10
+
+    return cost
 
 def load_array(fname):
     with open(fname, "rb") as f:
@@ -274,19 +273,30 @@ if __name__ == '__main__':
     how to generate the data and validate different points in the search space.
     
     """
-    num_process = 4
-    dsn_netlist = './genome/netlist/cs_amp.cir'
+
+
+    # test the CsAmp class with parameter values as input
+    num_process = 1
+    dsn_netlist = './framework/netlist/cs_amp.cir'
     cs_env = CsAmpClass(num_process=num_process, design_netlist=dsn_netlist)
 
     # example of running it for one example point and getting back the data
-    state_list = [{'mul': 4, 'rload': 1600}]
-    results = cs_env.run(state_list, verbose=True)
+    state_list = [{'mul': 5, 'rload': 1630}]
+    results = cs_env.run(state_list, verbose=False)
     if debug:
         print(results)
 
+    # test Evaluation core and cost function with indices as input
+    eval_core = CsAmpEvaluationCore("./framework/yaml_files/cs_amp.yaml")
+    # let's say we want to evaluate some point (opt_res, opt_mul)
+    opt_res = 85
+    opt_mul = 9
+    cost = eval_core.cost_fun(res_idx=opt_res, mul_idx=opt_mul, verbose=True)
+    print(cost)
+
     ##  generate the two-axis grid world of the cs_amp example: (rload, mul) in each cell
-    #   store bw, gain, Ibias and store them in file for later use:
-    gen_data = True
+    #   store bw, gain, Ibias and store them in file for later use, plot the specs:
+    gen_data = False
     verbose = True
 
     if gen_data:
@@ -298,11 +308,17 @@ if __name__ == '__main__':
             for j, res in enumerate(res_vec):
                 state_list = [{'mul': mul, 'rload': res}]
                 results = cs_env.run(state_list, verbose=verbose)
+                if (i==6 and j==85 and debug):
+                    print(results[0][1])
                 result_list.append(results[0][1])
 
         Ibias_vec = [result['Ibias'] for result in result_list]
         bw_vec = [result['bw'] for result in result_list]
         gain_vec = [result['gain'] for result in result_list]
+        # print(mul_vec)
+        # print(res_vec)
+        # print (len(Ibias_vec))
+        # print (gain_vec)
 
         Ibias_mat = np.reshape(Ibias_vec, [len(mul_vec), len(res_vec)])
         bw_mat = np.reshape(bw_vec, [len(mul_vec), len(res_vec)])
@@ -315,6 +331,7 @@ if __name__ == '__main__':
         save_array("./genome/sweeps/mul_vec.array", mul_vec)
         save_array("./genome/sweeps/res_vec.array", res_vec)
 
+
     if not gen_data:
         bw_mat =    load_array("./genome/sweeps/bw.array")
         gain_mat =  load_array("./genome/sweeps/gain.array")
@@ -325,29 +342,91 @@ if __name__ == '__main__':
     # Plotting the data
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
-    from matplotlib import cm
+    import matplotlib.cm as cm
 
-    mul_mat, res_mat = np.meshgrid(mul_vec, res_vec, indexing='ij', copy=False)
-    fig = plt.figure(1)
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_surface(mul_mat, res_mat, Ibias_mat, rstride=1, cstride=1, linewidth=0, cmap=cm.cubehelix)
-    ax.set_xlabel('multiplier')
-    ax.set_ylabel('res_values')
-    ax.set_zlabel('Ibias')
-    fig = plt.figure(2)
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_surface(mul_mat, res_mat, bw_mat, rstride=1, cstride=1, linewidth=0, cmap=cm.cubehelix)
-    ax.set_xlabel('multiplier')
-    ax.set_ylabel('res_values')
-    ax.set_zlabel('bandwidth')
-    fig = plt.figure(3)
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_surface(mul_mat, res_mat, gain_mat, rstride=1, cstride=1, linewidth=0, cmap=cm.cubehelix)
-    ax.set_xlabel('multiplier')
-    ax.set_ylabel('res_values')
-    ax.set_zlabel('gain')
+    mul_mat, res_mat = np.meshgrid(mul_vec, res_vec, indexing='ij')
 
-    plt.show()
+    bw_fun = interp.interp2d(res_vec,   mul_vec, bw_mat, kind="cubic")
+    bias_fun = interp.interp2d(res_vec, mul_vec, Ibias_mat, kind="cubic")
+    gain_fun = interp.interp2d(res_vec, mul_vec, gain_mat, kind="cubic")
+
+
+    Ib_min = np.min(np.min(Ibias_mat))
+    Ib_max = np.max(np.max(Ibias_mat))
+    gain_min = np.min(np.min(gain_mat))
+    gain_max = np.max(np.max(gain_mat))
+    bw_min = np.min(np.min(bw_mat))
+    bw_max = np.max(np.max(bw_mat))
+
+
+    fig = plt.figure()
+    fig.suptitle("(opt_res,opt_mul)=(%d,%d)" %(opt_res, opt_mul))
+
+    ax = fig.add_subplot(221)
+    mappable = ax.pcolormesh(np.log10(Ibias_mat*1e3), cmap='OrRd', vmin=np.log10(Ib_min*1e3), vmax=np.log10(Ib_max*1e3))
+    ax.plot(opt_res, opt_mul, 'x', color='k')
+    text = "%.2fmA" %(Ibias_mat[opt_mul][opt_res]*1e3)
+    ax.annotate(text, xy=(opt_res, opt_mul),
+                xytext=(opt_res+10, opt_mul+2))
+    ax.axis([0, len(res_vec)-1, 0, len(mul_vec)-1])
+    plt.colorbar(mappable)
+    ax.set_xlabel('res_idx')
+    ax.set_ylabel('mul_idx')
+    ax.set_title('log10(Ibias*1e3)')
+
+    ax = fig.add_subplot(222)
+    mappable = ax.pcolormesh(np.log10(gain_mat), cmap='OrRd', vmin=np.log10(gain_min), vmax=np.log10(gain_max))
+    ax.plot(opt_res, opt_mul, 'x', color='k')
+    text = "%.2f" %(gain_mat[opt_mul][opt_res])
+    ax.annotate(text, xy=(opt_res, opt_mul),
+                xytext=(opt_res+10, opt_mul+2))
+    ax.axis([0, len(res_vec)-1, 0, len(mul_vec)-1])
+    plt.colorbar(mappable)
+    ax.set_xlabel('res_idx')
+    ax.set_ylabel('mul_idx')
+    ax.set_title('log10(gain)')
+
+
+    ax = fig.add_subplot(223)
+    mappable = ax.pcolormesh(np.log10(bw_mat), cmap='OrRd', vmin=np.log10(bw_min), vmax=np.log10(bw_max))
+    ax.plot(opt_res, opt_mul, 'x', color='k')
+    text = "%.2fGHz" %(bw_mat[opt_mul][opt_res]/1e9)
+    ax.annotate(text, xy=(opt_res, opt_mul),
+                xytext=(opt_res+10, opt_mul+2))
+    ax.axis([0, len(res_vec)-1, 0, len(mul_vec)-1])
+    plt.colorbar(mappable)
+    ax.set_xlabel('res_idx')
+    ax.set_ylabel('mul_idx')
+    ax.set_title('log10(bw[Hz])')
+
+
+    cost_mat = [[cost_fc(Ibias_mat[mul_idx][res_idx],
+                         gain_mat[mul_idx][res_idx],
+                         bw_mat[mul_idx][res_idx]) for res_idx in \
+                 range(len(res_vec))] for mul_idx in range(len(mul_vec))]
+
+    cost_min = np.min(np.min(cost_mat))
+    cost_max = np.max(np.max(cost_mat))
+
+    ax = fig.add_subplot(224)
+    # mappable = ax.pcolormesh(np.log10(cost_mat), cmap='OrRd', vmin=np.log10(cost_min), vmax=np.log10(cost_max))
+    mappable = ax.pcolormesh(cost_mat, cmap='OrRd', vmin=cost_min, vmax=cost_max)
+    ax.plot(opt_res, opt_mul, 'x', color='k')
+    text = "%.2f" %(cost_mat[opt_mul][opt_res])
+    ax.annotate(text, xy=(opt_res, opt_mul),
+                xytext=(opt_res+10, opt_mul+2))
+    ax.axis([0, len(res_vec)-1, 0, len(mul_vec)-1])
+    plt.colorbar(mappable)
+    ax.set_xlabel('res_idx')
+    ax.set_ylabel('mul_idx')
+    ax.set_title('cost')
+    ax.grid()
+    fig.tight_layout()
+
+
+
+
+
 
 
 
