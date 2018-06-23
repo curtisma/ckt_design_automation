@@ -10,6 +10,7 @@ import os
 from scipy import interpolate
 
 from framework.wrapper import TwoStageComplete as sim
+import genome.alg as alg
 
 ######################################################################
 ## helper functions for working with files
@@ -30,34 +31,34 @@ def init_inividual():
     # returns a vector representing a random individual
     # ind = [random.randint(1, 100) for _ in range(5)]
     # return creator.Individual(ind)
-    mp1 = random.choice(eval_core.mp1_vec)
-    mn1 = random.choice(eval_core.mn1_vec)
-    mn3 = random.choice(eval_core.mn3_vec)
-    mp3 = random.choice(eval_core.mp3_vec)
-    mn5 = random.choice(eval_core.mn5_vec)
-    mn4 = random.choice(eval_core.mn4_vec)
-    cc = random.choice(eval_core.cc_vec)
+    mp1_idx = random.randint(0,len(eval_core.mp1_vec)-1)
+    mn1_idx = random.randint(0,len(eval_core.mn1_vec)-1)
+    mn3_idx = random.randint(0,len(eval_core.mn3_vec)-1)
+    mp3_idx = random.randint(0,len(eval_core.mp3_vec)-1)
+    mn5_idx = random.randint(0,len(eval_core.mn5_vec)-1)
+    mn4_idx = random.randint(0,len(eval_core.mn4_vec)-1)
+    cc_idx =  random.randint(0,len(eval_core.cc_vec)-1)
 
-    return creator.Individual([mp1,
-                               mn1,
-                               mn3,
-                               mp3,
-                               mn5,
-                               mn4,
-                               cc])
+    return creator.Individual([mp1_idx,
+                               mn1_idx,
+                               mn3_idx,
+                               mp3_idx,
+                               mn5_idx,
+                               mn4_idx,
+                               cc_idx])
 
 def evaluate_individual(individual, verbose=False):
     # TODO
     # returns a scalar number representing the cost function of that individual
     # return (sum(individual),)
-    mp1 = individual[0]
-    mn1 = individual[1]
-    mn3 = individual[2]
-    mp3 = individual[3]
-    mn5 = individual[4]
-    mn4 = individual[5]
-    cc  = individual[6]
-    cost_val = eval_core.cost_fun(mp1, mn1, mp3, mn3, mn4, mn5, cc, verbose=verbose)
+    mp1_idx = int(individual[0])
+    mn1_idx = int(individual[1])
+    mn3_idx = int(individual[2])
+    mp3_idx = int(individual[3])
+    mn5_idx = int(individual[4])
+    mn4_idx = int(individual[5])
+    cc_idx  = int(individual[6])
+    cost_val = eval_core.cost_fun(mp1_idx, mn1_idx, mp3_idx, mn3_idx, mn4_idx, mn5_idx, cc_idx, verbose=verbose)
     return (cost_val,)
 
 
@@ -96,30 +97,59 @@ toolbox.register("individual", init_inividual)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 toolbox.register("evaluate", evaluate_individual)
-toolbox.register("select", tools.selBest)
+toolbox.register("select", tools.selTournament, tournsize=2)
 toolbox.register("mate", tools.cxOnePoint)
-toolbox.register("mutate", tools.mutGaussian, mu=[50, 50, 50, 50, 50, 50, 5e-12], sigma=[10, 10, 10, 10, 10, 10, 1e-12], indpb=0.05)
+# toolbox.register("mutate", tools.mutGaussian, mu=[50, 50, 50, 50, 50, 50, 5e-12], sigma=[10, 10, 10, 10, 10, 10, 1e-12], indpb=0.05)
+toolbox.register("mutate", tools.mutUniformInt, low=[0 for _ in range(7)], up=[len(eval_core.mp1_vec)-1,
+                                                                               len(eval_core.mn1_vec)-1,
+                                                                               len(eval_core.mp3_vec)-1,
+                                                                               len(eval_core.mn3_vec)-1,
+                                                                               len(eval_core.mn4_vec)-1,
+                                                                               len(eval_core.mn5_vec)-1,
+                                                                               len(eval_core.cc_vec)-1], indpb=0.5) # mp1, mn1, mp3, mn3, mn4, mn5, cc
+
+toolbox.register("mutUNDO", alg.mutUNDO)
+toolbox.register("selectParents", alg.selParentRandom)
 
 # Decorate the variation operators
 toolbox.decorate("mate", history.decorator)
 toolbox.decorate("mutate", history.decorator)
 
-init_pop_size = 2048
-pop_size = 1024
-offspring_size = 1024
+init_pop_size = 64
+pop_size = init_pop_size/2
+offspring_size = init_pop_size/8
 cxpb = 0.6
-mutpb = 0.05
-ngen = 30
+mutpb = 0.4
+ngen = 150
+T0 = 0.01
 
 def main():
 
+    random.seed(11)
     pop = toolbox.population(n=init_pop_size)
     history.update(pop)
     print(pop)
-    pop, logbook = algorithms.eaMuPlusLambda(pop, toolbox, mu=pop_size, lambda_=offspring_size, cxpb=cxpb,
-                                             mutpb=mutpb, ngen=ngen, stats=mStat, verbose=True)
+    mut_scheduler = alg.LinearSchedule(ngen, 0.05, 0.4)
+    pop, logbook = alg.eaMuPlusLambda(pop, toolbox, mu=pop_size, lambda_=offspring_size, cxpb=cxpb,
+                                      mut_scheduler=mut_scheduler, ngen=ngen, T0=T0, stats=mStat, verbose=True)
+    # pop, logbook = algorithms.eaMuPlusLambda(pop, toolbox, mu=pop_size, lambda_=offspring_size, cxpb=cxpb,
+    #                                          mutpb=mutpb, ngen=ngen, stats=mStat, verbose=True)
     import pprint
     print_best_ind(pop)
+    gen = logbook.select('gen')
+
+    fit_avg, fit_min, fit_max, fit_std = np.array(logbook.chapters["fit"].select('avg', 'min', 'max', 'std'))
+
+    print (fit_min)
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    ax = plt.gca()
+    ax.plot(gen, fit_avg)
+    ax.plot(gen, fit_min, '--', color='r')
+    ax.plot(gen, fit_max, '--', color='r')
+    ax.plot(gen, fit_avg+fit_std, ':', color='m')
+    ax.plot(gen, fit_avg-fit_std, ':', color='m')
+    ax.set_ylabel('cost function')
     # pprint.pprint(history.genealogy_history)
     # pprint.pprint(history.genealogy_tree)
     import pickle

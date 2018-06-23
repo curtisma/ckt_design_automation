@@ -270,13 +270,13 @@ class EvaluationCore(object):
         if verbose:
             print("state_before_rounding:{}".format([mp1, mn1, mn3, mp3, mn5, mn4, cc]))
 
-        state = [{'mp1': int(mp1),
-                  'mn1': int(mn1),
-                  'mp3': int(mp3),
-                  'mn3': int(mn3),
-                  'mn4': int(mn4),
-                  'mn5': int(mn5),
-                  'cc':  cc
+        state = [{'mp1': self.mp1_vec[mp1],
+                  'mn1': self.mn1_vec[mn1],
+                  'mp3': self.mp3_vec[mp3],
+                  'mn3': self.mn3_vec[mn3],
+                  'mn4': self.mn4_vec[mn4],
+                  'mn5': self.mn5_vec[mn5],
+                  'cc':  self.cc_vec[cc]
                   }]
         ol_results = self.ol_env.run(state, verbose=verbose)
         cm_results = self.cm_env.run(state, verbose=verbose)
@@ -332,7 +332,7 @@ class EvaluationCore(object):
         cost += abs(ibias_cur/self.bias_max)/10
 
         eval_end_time = time.time()
-        print("eval_time    %s sec" %(eval_end_time-eval_start_time))
+        # print("eval_time    %s sec" %(eval_end_time-eval_start_time))
         return cost
 
     @classmethod
@@ -412,12 +412,12 @@ if __name__ == '__main__':
 
     # test evaluation core of the opamp
     eval_core = EvaluationCore('./framework/yaml_files/two_stage_full.yaml')
-    cost = eval_core.cost_fun(mp1=18,
-                              mn1=38,
-                              mn3=35,
-                              mp3=158,
-                              mn5=158,
-                              mn4=51,
-                              cc=3.1e-12,
+    cost = eval_core.cost_fun(mp1=4, #mp1=18,
+                              mn1=19, #mn1=38,
+                              mn3=7, #mn3=35,
+                              mp3=62, #mp3=24,
+                              mn5=49, #mn5=24,
+                              mn4=68, #mn4=51,
+                              cc=6,  #cc=3.1e-12,
                               verbose=True)
     print(cost)
