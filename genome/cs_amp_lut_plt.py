@@ -200,12 +200,12 @@ toolbox.register("selectParents", alg.selParentRandom)
 toolbox.decorate("mate", history.decorator)
 toolbox.decorate("mutate", history.decorator)
 
-init_pop_size = 64
-pop_size = 32
-offspring_size = 8
+init_pop_size = 128
+pop_size = 64
+offspring_size = 64
 cxpb = 0.5
 mutpb = 0.4
-ngen = 150
+ngen = 40
 T0 = 0
 
 def main():
@@ -213,10 +213,10 @@ def main():
     random.seed()
     pop = toolbox.population(n=init_pop_size)
     history.update(pop)
-    pop, logbook = alg.eaMuPlusLambda_cs(pop, toolbox, mu=pop_size, lambda_=offspring_size, cxpb=cxpb,
-                                         mutpb=mutpb, ngen=ngen, T0=T0, stats=mStat, verbose=True)
-    # pop, logbook = eaMuPlusLambda(pop, toolbox, mu=pop_size, lambda_=offspring_size, cxpb=cxpb,
-    #                               mutpb=mutpb, ngen=ngen, stats=mStat, verbose=True)
+    # pop, logbook = alg.eaMuPlusLambda_cs(pop, toolbox, mu=pop_size, lambda_=offspring_size, cxpb=cxpb,
+    #                                      mutpb=mutpb, ngen=ngen, T0=T0, stats=mStat, verbose=True)
+    pop, logbook = eaMuPlusLambda(pop, toolbox, mu=pop_size, lambda_=offspring_size, cxpb=cxpb,
+                                  mutpb=mutpb, ngen=ngen, stats=mStat, verbose=True)
     import pprint
     print_best_ind(pop)
     gen = logbook.select('gen')

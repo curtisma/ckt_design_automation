@@ -11,6 +11,12 @@ from scipy import interpolate
 
 from framework.wrapper import TwoStageComplete as sim
 import genome.alg as alg
+import sys
+
+log_file = './genome/log.txt'
+file = open(log_file,'w')
+# origin_stdout = sys.stdout
+# sys.stdout = file
 
 ######################################################################
 ## helper functions for working with files
@@ -115,9 +121,9 @@ toolbox.register("selectParents", alg.selParentRandom)
 toolbox.decorate("mate", history.decorator)
 toolbox.decorate("mutate", history.decorator)
 
-init_pop_size = 64
-pop_size = init_pop_size/2
-offspring_size = init_pop_size/8
+init_pop_size = 512
+pop_size = int(init_pop_size/2)
+offspring_size = 256 #int(init_pop_size/8)
 cxpb = 0.6
 mutpb = 0.4
 ngen = 150
@@ -125,7 +131,7 @@ T0 = 0.01
 
 def main():
 
-    random.seed(11)
+    # random.seed(11)
     pop = toolbox.population(n=init_pop_size)
     history.update(pop)
     print(pop)
@@ -158,4 +164,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    print(evaluate_individual([98,24,77,71,25,35,19]))
+    # main()

@@ -233,7 +233,7 @@ class EvaluationCore(object):
         self.psrr_min   = specs['psrr_min']
         self.cmrr_min   = specs['cmrr_min']
         self.offset_max = specs['offset_sys_max']
-        self.bias_max   = 10e-3
+        self.bias_max   = specs['bias_max']
 
         num_process = yaml_data['num_process']
         ol_dsn_netlist = yaml_data['ol_dsn_netlist']
@@ -333,7 +333,9 @@ class EvaluationCore(object):
 
         eval_end_time = time.time()
         # print("eval_time    %s sec" %(eval_end_time-eval_start_time))
-        return cost
+        # updated the output because we want to have access to what each individual spec is
+        # return cost
+        return cost, ugbw_cur, gain_cur, phm_cur, tset_cur, psrr_cur, cmrr_cur, offset_curr, ibias_cur
 
     @classmethod
     def get_tset(cls, t, vout, vin, fbck, tot_err=0.1, plt=False):

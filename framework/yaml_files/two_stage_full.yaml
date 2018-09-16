@@ -14,8 +14,7 @@ target_specs:
   psrr_min: 50 #db
   cmrr_min: 50 #db
   offset_sys_max: !!float 1e-6 #1 mv as the systematic offset
-
-
+  bias_max: !!float 10e-3
 
 params:
   mp1:  !!python/tuple [1, 100, 1]
