@@ -523,14 +523,14 @@ def test_swaping(session, dataset, cost):
 
 def test_model(session, training_dataset, training_cost):
 
-    n_samples = 1000
-
     # generate the designs
     if os.path.exists('genetic_nn/checkpoint/two_stage/test_data.pkl'):
         with open('genetic_nn/checkpoint/two_stage/test_data.pkl', 'rb') as f:
             read_data = pickle.load(f)
             new_designs, new_cost = read_data['dataset'], read_data['cost']
+            n_samples = len(new_cost)
     else:
+        n_samples = 1000
         new_designs, new_cost = generate_data_set(n_samples)
         write_data = dict(dataset=new_designs, cost=new_cost)
         with open('genetic_nn/checkpoint/two_stage/test_data.pkl', 'wb') as f:
@@ -682,14 +682,20 @@ def main():
             new_dataset, new_cost, new_predictions = run_model(session, sorted_design_pool, sorted_cost_pool,
                                                                n_new_samples,
                                                                ref_dsn_idx, max_iter=10000)
-            if len(dataset) >=  max_data_set_size :
+            # if len(dataset) >=  max_data_set_size :
                 # reached the maximum allowable number of evaluations
-                break
+                # break
             for k in range(len(new_dataset)):
                 print("[debug] {} -> {} -> {}".format(new_dataset[k], new_cost[k], new_predictions[k]))
 
-            dataset = np.concatenate((dataset, new_dataset), axis=0)
-            cost = np.concatenate((cost, new_cost), axis=0)
+            # Evict old bad data as we progress: b/c we already know very good what's a bad design
+            # print("[Debug_before_eviction] data\n"+30*"-"+"\n{}".format(dataset))
+            # print("[Debug_before_eviction] cost\n"+30*"-"+"\n{}".format(cost))
+            dataset = np.concatenate((sorted_design_pool[:-len(new_dataset)], new_dataset), axis=0)
+            cost = np.concatenate((sorted_cost_pool[:-len(new_dataset)], new_cost), axis=0)
+            # print("[Debug_after_eviction] data\n"+30*"-"+"\n{}".format(dataset))
+            # print("[Debug_after_eviction] cost\n"+30*"-"+"\n{}".format(cost))
+
             train(session, dataset, cost, writer, num_epochs=num_epochs, batch_size=batch_size)
         print("[finished] best_solution = {}".format(dataset[sorted_indices[0]]))
         print("[finished] cost = {}".format(cost[sorted_indices[0]]))
