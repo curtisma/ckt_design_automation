@@ -137,11 +137,12 @@ ngen = 30
 
 def main():
 
+    random.seed(15)
     pop = toolbox.population(n=init_pop_size)
     history.update(pop)
     print(pop)
     pop, logbook = algorithms.eaMuPlusLambda(pop, toolbox, mu=pop_size, lambda_=offspring_size, cxpb=cxpb,
-                                              mutpb=mutpb, ngen=ngen, stats=mStat, verbose=True)
+                                              mutpb=mutpb, ngen=ngen, stats=mStat, verbose=False)
     import pprint
     print_best_ind(pop)
     # pprint.pprint(history.genealogy_history)

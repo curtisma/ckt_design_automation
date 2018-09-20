@@ -150,8 +150,8 @@ class EvaluationCore(object):
 if __name__ == '__main__':
     eval_core = EvaluationCore('./framework/yaml_files/dtsa.yaml')
     cost = eval_core.cost_fun(m1=10,
-                              m2=4,
-                              m3=10,
+                              m2=30,
+                              m3=40,
                               m4=4,
                               m5=2,
                               m6=1,

@@ -2,7 +2,7 @@ dsn_netlist: "./framework/netlist/dtsa.cir"
 num_process: 1
 
 target_specs:
-  vmin_min:   !!float 20e-3
+  vmin_min:   !!float 40e-3
   Tper:       !!float 200e-12
   vout_min:   !!float 800e-3
   tsetup:     !!float 30e-12
