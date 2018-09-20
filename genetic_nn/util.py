@@ -23,3 +23,37 @@ class BatchGenerator(object):
             self.last_index = (self.last_index+1) % (self._segment+1)
             return indices
 
+
+class Design(list):
+    def __init__(self, seq=()):
+        list.__init__(self, seq)
+        self.cost =     None
+        self.fitness =  None
+        self.specs =    dict(
+            ugbw_cur=   None,
+            gain_cur=   None,
+            phm_cur=    None,
+            tset_cur=   None,
+            psrr_cur=   None,
+            cmrr_cur=   None,
+            offset_curr=None,
+            ibias_cur=  None,
+        )
+
+    @property
+    def cost(self):
+        return self.__cost
+
+    @property
+    def fitness(self):
+        return self.__fitness
+
+    @cost.setter
+    def cost(self, x):
+        self.__cost = x
+        self.__fitness = -x if x is not None else None
+
+    @fitness.setter
+    def fitness(self, x):
+        self.__fitness = x
+        self.__cost = -x if x is not None else None

@@ -223,17 +223,17 @@ class EvaluationCore(object):
             yaml_data = yaml.load(f)
 
         # specs
-        specs = yaml_data['target_specs']
-        self.ugbw_min   = specs['ugbw_min']
-        self.gain_min   = specs['gain_min']
-        self.phm_min    = specs['phm_min']
-        self.tset_max   = specs['tset_max']
-        self.fdbck      = specs['feedback_factor']
-        self.tot_err    = specs['tot_err']
-        self.psrr_min   = specs['psrr_min']
-        self.cmrr_min   = specs['cmrr_min']
-        self.offset_max = specs['offset_sys_max']
-        self.bias_max   = specs['bias_max']
+        self.specs = yaml_data['target_specs']
+        self.ugbw_min   = self.specs['ugbw_min']
+        self.gain_min   = self.specs['gain_min']
+        self.phm_min    = self.specs['phm_min']
+        self.tset_max   = self.specs['tset_max']
+        self.fdbck      = self.specs['feedback_factor']
+        self.tot_err    = self.specs['tot_err']
+        self.psrr_min   = self.specs['psrr_min']
+        self.cmrr_min   = self.specs['cmrr_min']
+        self.offset_max = self.specs['offset_sys_max']
+        self.bias_max   = self.specs['bias_max']
 
         num_process = yaml_data['num_process']
         ol_dsn_netlist = yaml_data['ol_dsn_netlist']
@@ -246,38 +246,37 @@ class EvaluationCore(object):
         self.ps_env = TwoStagePowerSupplyGain(num_process=num_process, design_netlist=ps_dsn_netlist)
         self.tran_env = TwoStageTransient(num_process=num_process, design_netlist=tran_dsn_netlist)
 
-        params = yaml_data['params']
-        self.mp1_vec = np.arange(params['mp1'][0], params['mp1'][1], params['mp1'][2])
-        self.mn1_vec = np.arange(params['mn1'][0], params['mn1'][1], params['mn1'][2])
-        self.mn3_vec = np.arange(params['mn3'][0], params['mn3'][1], params['mn3'][2])
-        self.mn4_vec = np.arange(params['mn4'][0], params['mn4'][1], params['mn4'][2])
-        self.mp3_vec = np.arange(params['mp3'][0], params['mp3'][1], params['mp3'][2])
-        self.mn5_vec = np.arange(params['mn5'][0], params['mn5'][1], params['mn5'][2])
-        self.cc_vec = np.arange(params['cc'][0], params['cc'][1], params['cc'][2])
+        self.params = yaml_data['params']
+        self.params_vec = []
+        for value in self.params.values():
+            param_vec = np.arange(value[0], value[1], value[2])
+            self.params_vec.append(param_vec)
+        self.mp1_vec = np.arange(self.params['mp1'][0], self.params['mp1'][1], self.params['mp1'][2])
+        self.mn1_vec = np.arange(self.params['mn1'][0], self.params['mn1'][1], self.params['mn1'][2])
+        self.mn3_vec = np.arange(self.params['mn3'][0], self.params['mn3'][1], self.params['mn3'][2])
+        self.mn4_vec = np.arange(self.params['mn4'][0], self.params['mn4'][1], self.params['mn4'][2])
+        self.mp3_vec = np.arange(self.params['mp3'][0], self.params['mp3'][1], self.params['mp3'][2])
+        self.mn5_vec = np.arange(self.params['mn5'][0], self.params['mn5'][1], self.params['mn5'][2])
+        self.cc_vec = np.arange(self.params['cc'][0], self.params['cc'][1], self.params['cc'][2])
 
 
-    def cost_fun(self, mp1, mn1, mp3, mn3, mn4, mn5 , cc,  verbose=False):
+    def cost_fun(self, design, verbose=False):
         """
 
-        :param res:
-        :param mul:
-        :param verbose: if True will print the specification performance of the best individual and file name of
-        the netlist
+        :param design: a list containing relative indices according to yaml file
+        :param verbose:
         :return:
         """
 
         eval_start_time = time.time()
         if verbose:
-            print("state_before_rounding:{}".format([mp1, mn1, mn3, mp3, mn5, mn4, cc]))
+            print("state_before_rounding:{}".format(design))
 
-        state = [{'mp1': self.mp1_vec[mp1],
-                  'mn1': self.mn1_vec[mn1],
-                  'mp3': self.mp3_vec[mp3],
-                  'mn3': self.mn3_vec[mn3],
-                  'mn4': self.mn4_vec[mn4],
-                  'mn5': self.mn5_vec[mn5],
-                  'cc':  self.cc_vec[cc]
-                  }]
+        state_dict = dict()
+        for i, key in enumerate(self.params.keys()):
+            state_dict[key] = self.params_vec[i][design[i]]
+        state = [state_dict]
+
         ol_results = self.ol_env.run(state, verbose=verbose)
         cm_results = self.cm_env.run(state, verbose=verbose)
         ps_results = self.ps_env.run(state, verbose=verbose)
@@ -287,7 +286,6 @@ class EvaluationCore(object):
         gain_cur = ol_results[0][1]['gain']
         phm_cur = ol_results[0][1]['phm']
         ibias_cur = ol_results[0][1]['Ibias']
-
         # common mode gain and cmrr
         cm_gain_cur = cm_results[0][1]['cm_gain']
         cmrr_cur = 20*np.log10(gain_cur/cm_gain_cur) # in db
@@ -414,12 +412,14 @@ if __name__ == '__main__':
 
     # test evaluation core of the opamp
     eval_core = EvaluationCore('./framework/yaml_files/two_stage_full.yaml')
-    cost = eval_core.cost_fun(mp1=4, #mp1=18,
-                              mn1=19, #mn1=38,
-                              mn3=7, #mn3=35,
-                              mp3=62, #mp3=24,
-                              mn5=49, #mn5=24,
-                              mn4=68, #mn4=51,
-                              cc=6,  #cc=3.1e-12,
-                              verbose=True)
+    # cost = eval_core.cost_fun(mp1=4, #mp1=18,
+    #                           mn1=19, #mn1=38,
+    #                           mn3=7, #mn3=35,
+    #                           mp3=62, #mp3=24,
+    #                           mn5=49, #mn5=24,
+    #                           mn4=68, #mn4=51,
+    #                           cc=6,  #cc=3.1e-12,
+    #                           verbose=True)
+    # print(len(eval_core.params_vec[1]))
+    cost = eval_core.cost_fun([4,99,62,7,68,49,6], verbose=True)
     print(cost)
